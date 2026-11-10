@@ -26,8 +26,7 @@
   "kv_namespaces": [
     {
       "binding": "DATA",
-      // TODO: replace after `npx wrangler kv namespace create DATA`
-      "id": "REPLACE_WITH_KV_NAMESPACE_ID"
+      "id": "b577904b193d4c9d987ffbf787cd8be9"
     }
   ],
 
