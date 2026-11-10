@@ -18,7 +18,13 @@
   <!-- lobby -->
   <section class="center" id="lobby" hidden>
     <p class="eyebrow">Join at <strong id="joinHost" class="mono"></strong></p>
-    <div class="passcode" id="passcode" aria-label="Game passcode"></div>
+    <div class="lobby-join">
+      <div class="passcode" id="passcode" aria-label="Game passcode"></div>
+      <div class="join-qr" id="joinQr" hidden>
+        <div class="join-qr-code" id="joinQrCode"></div>
+        <p class="join-qr-url mono" id="joinUrl"></p>
+      </div>
+    </div>
     <p class="tally"><strong id="playerCount">0</strong> in the room</p>
     <div class="roster" id="roster"></div>
     <div class="row">
@@ -72,6 +78,7 @@
 
 <script type="module">
 import { $, GLYPHS, api, connect, createClock, renderPasscode, show, text } from "/app/common.js";
+import { qrSvg } from "/app/qr.js";
 
 const quizId = location.pathname.split("/")[2] || "";
 const clock = createClock($("#clock"));
@@ -131,6 +138,16 @@ async function boot() {
   text($("#title"), saved.title);
   text($("#joinHost"), `${location.host}`);
   renderPasscode($("#passcode"), saved.code);
+
+  // Scanning beats typing six digits, but the passcode stays the headline so
+  // anyone without a camera is never stuck.
+  const joinUrl = saved.joinUrl || `${location.origin}/play?code=${saved.code}`;
+  const svg = qrSvg(joinUrl);
+  if (svg) {
+    $("#joinQrCode").innerHTML = svg;
+    text($("#joinUrl"), joinUrl.replace(/^https?:\/\//, ""));
+    show($("#joinQr"), true);
+  }
   $("#resultLink").href = `/results/${saved.gameId}`;
   $("#resultLink").textContent = `${location.host}/results/${saved.gameId}`;
 

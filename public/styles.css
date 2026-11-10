@@ -677,3 +677,70 @@ label {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---- lobby: passcode beside a scannable code ---- */
+
+.lobby-join {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(1rem, 4vw, 3rem);
+  flex-wrap: wrap;
+}
+
+.join-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.join-qr-code {
+  width: clamp(8rem, 18vh, 15rem);
+  height: clamp(8rem, 18vh, 15rem);
+  padding: 0.5rem;
+  background: var(--chalk);
+  border: 2px solid var(--edge);
+  border-radius: var(--radius);
+}
+
+.join-qr-code svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.join-qr-url {
+  margin: 0;
+  font-size: clamp(0.7rem, 1.1vw, 0.95rem);
+  color: var(--chalk-dim);
+  overflow-wrap: anywhere;
+  max-width: 18rem;
+  text-align: center;
+}
+
+/* ---- share dialog ---- */
+
+.share {
+  width: min(92vw, 26rem);
+  padding: clamp(1rem, 3vw, 1.75rem);
+  background: var(--ink-2);
+  color: var(--chalk);
+  border: 2px solid var(--edge);
+  border-radius: var(--radius);
+}
+
+.share::backdrop {
+  background: rgba(14, 20, 48, 0.75);
+}
+
+.share .join-qr-code {
+  width: 12rem;
+  height: 12rem;
+  margin: 1rem auto;
+}
+
+.share input {
+  margin: 0.75rem 0 1rem;
+  font-size: 0.85rem;
+}

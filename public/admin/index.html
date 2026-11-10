@@ -63,6 +63,21 @@
     <p class="alert" id="editError" role="alert" hidden></p>
   </section>
 
+  <dialog class="share" id="shareDialog">
+    <p class="eyebrow">Host link</p>
+    <h2 id="shareTitle" style="font-size:1.25rem"></h2>
+    <div class="join-qr-code" id="shareQr" hidden></div>
+    <p class="note">
+      Opens the host screen and starts a game. Send it to whoever is running the
+      quiz &mdash; players join with the passcode it puts on screen.
+    </p>
+    <input id="shareUrl" class="mono" readonly aria-label="Host link">
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn" data-variant="quiet" id="shareClose">Close</button>
+      <button class="btn" id="shareCopy">Copy link</button>
+    </div>
+  </dialog>
+
   <p class="alert" id="error" role="alert" hidden></p>
   <p class="alert" id="ok" data-kind="ok" role="status" hidden></p>
 </main>

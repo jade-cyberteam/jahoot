@@ -5,6 +5,7 @@
  */
 
 import { $, GLYPHS, api, show, text } from "/app/common.js";
+import { qrSvg } from "/app/qr.js";
 
 const DEFAULT_TIME = 20;
 const DEFAULT_POINTS = 1000;
@@ -58,6 +59,7 @@ async function loadList() {
       const actions = document.createElement("td");
       actions.append(
         link("Host", `/host/${quiz.id}`),
+        button("Share", "quiet", () => share(quiz)),
         button("Edit", "quiet", () => edit(quiz.id)),
         button("Delete", "danger", () => remove(quiz)),
       );
@@ -91,6 +93,38 @@ function button(label, variant, onClick) {
   b.textContent = label;
   b.addEventListener("click", onClick);
   return b;
+}
+
+/**
+ * The share link for a quiz is its *host* link — a game, and therefore a join
+ * passcode, doesn't exist until someone opens it. So this is the link you send
+ * to whoever is running the quiz, not to players; the dialog says so, because a
+ * host link scanned on a phone would quietly start a game on that phone.
+ */
+function share(quiz) {
+  const url = quiz.hostUrl || `${location.origin}/host/${quiz.id}`;
+  const dialog = $("#shareDialog");
+
+  text($("#shareTitle"), quiz.title);
+  $("#shareUrl").value = url;
+  const svg = qrSvg(url);
+  $("#shareQr").innerHTML = svg || "";
+  show($("#shareQr"), Boolean(svg));
+
+  const copy = $("#shareCopy");
+  text(copy, "Copy link");
+  copy.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      text(copy, "Copied");
+    } catch {
+      // Clipboard access can be refused; the field is selectable either way.
+      $("#shareUrl").select();
+      text(copy, "Press Cmd+C");
+    }
+  };
+
+  dialog.showModal();
 }
 
 async function remove(quiz) {
@@ -346,6 +380,7 @@ async function save() {
 // ---- wire up ----
 
 $("#new").addEventListener("click", startNew);
+$("#shareClose").addEventListener("click", () => $("#shareDialog").close());
 $("#cancel").addEventListener("click", loadList);
 $("#save").addEventListener("click", save);
 $("#addMultiple").addEventListener("click", () => {
