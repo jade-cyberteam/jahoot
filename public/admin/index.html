@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quizzes · jahoot</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="shell">
+  <div class="topbar">
+    <span class="brand">jahoot</span>
+    <span class="eyebrow">Quiz builder</span>
+    <span class="eyebrow mono" id="whoami"></span>
+  </div>
+
+  <!-- list -->
+  <section class="stack" id="listView">
+    <div class="spread">
+      <h1 style="font-size:clamp(1.5rem,4vw,2.5rem)">Your quizzes</h1>
+      <button class="btn" id="new">New quiz</button>
+    </div>
+    <div class="panel" id="listPanel">
+      <p class="note" id="empty" hidden>No quizzes yet. Make one here, or ask Claude Code to write one.</p>
+      <table class="board" id="listTable" hidden>
+        <thead>
+          <tr><th>Title</th><th class="score">Questions</th><th>Updated</th><th>By</th><th></th></tr>
+        </thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- editor -->
+  <section class="stack" id="editView" hidden>
+    <div class="spread">
+      <h1 style="font-size:clamp(1.25rem,3vw,2rem)" id="editHeading">New quiz</h1>
+      <div class="row">
+        <button class="btn" data-variant="quiet" id="cancel">Back</button>
+        <button class="btn" id="save">Save</button>
+      </div>
+    </div>
+
+    <div class="panel stack">
+      <div class="field">
+        <label for="qTitle">Title</label>
+        <input id="qTitle" maxlength="120" placeholder="NZ geography">
+      </div>
+      <div class="field" style="margin:0">
+        <label for="qDesc">Description <span style="text-transform:none;letter-spacing:0">(optional)</span></label>
+        <input id="qDesc" maxlength="500" placeholder="Ten questions, mostly rivers">
+      </div>
+    </div>
+
+    <div class="stack" id="questions"></div>
+
+    <div class="row">
+      <button class="btn" data-variant="quiet" id="addMultiple">Add multiple choice</button>
+      <button class="btn" data-variant="quiet" id="addBoolean">Add true / false</button>
+    </div>
+
+    <p class="alert" id="editError" role="alert" hidden></p>
+  </section>
+
+  <p class="alert" id="error" role="alert" hidden></p>
+  <p class="alert" id="ok" data-kind="ok" role="status" hidden></p>
+</main>
+
+<script type="module" src="/admin/app.js"></script>
+</body>
+</html>

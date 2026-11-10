@@ -1,0 +1,4 @@
+# Copy to .dev.vars for `npm run dev` (untracked).
+API_TOKEN=dev-api-token
+# Lets /admin render without a Cloudflare Access login on localhost.
+ALLOW_INSECURE_ADMIN=1

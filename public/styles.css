@@ -1,0 +1,679 @@
+/*
+ * jahoot — "stadium scoreboard"
+ *
+ * A dark, enamel-and-sodium-lamp system built for two very different screens:
+ * a projector read from across a room, and a phone held in one hand. Dark only
+ * by intent — this runs in dimmed rooms, and a light mode would be a liability.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Archivo+Black&family=Big+Shoulders+Display:wght@500;700;800&family=Space+Mono:wght@400;700&display=swap");
+
+:root {
+  --ink: #0e1430;
+  --ink-2: #171f42;
+  --ink-3: #212b55;
+  --edge: #2e3a68;
+  --chalk: #f2efe4;
+  --chalk-dim: #a3a9c2;
+  --sodium: #ffb22e;
+  --sodium-hot: #ff6b35;
+  --correct: #5fa832;
+  --wrong: #c8324b;
+
+  --tile-a: #e4572e;
+  --tile-b: #2e9cca;
+  --tile-c: #8e6bbf;
+  --tile-d: #5fa832;
+  --tile-e: #d98cb3;
+  --tile-f: #c9a227;
+
+  --display: "Archivo Black", "Archivo", Impact, sans-serif;
+  --label: "Big Shoulders Display", "Archivo Narrow", sans-serif;
+  --body: "Archivo", system-ui, -apple-system, sans-serif;
+  --mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Hard-edged throughout: enamel signage, not pills. */
+  --radius: 4px;
+  --gap: clamp(0.75rem, 2vw, 1.5rem);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--ink);
+  color: var(--chalk);
+  font-family: var(--body);
+  font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A faint vignette so the projector's hot centre doesn't flatten the field. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 178, 46, 0.07), transparent 60%);
+  z-index: 0;
+}
+
+main,
+.shell {
+  position: relative;
+  z-index: 1;
+}
+
+:focus-visible {
+  outline: 3px solid var(--sodium);
+  outline-offset: 3px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+a {
+  color: var(--sodium);
+  text-decoration-color: color-mix(in srgb, var(--sodium) 45%, transparent);
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  text-decoration-color: var(--sodium);
+}
+
+/* .btn and .eyebrow links carry their own treatment. */
+a.btn,
+a.eyebrow {
+  text-decoration: none;
+}
+
+/* ---- type ---- */
+
+.eyebrow {
+  font-family: var(--label);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: clamp(0.7rem, 1.4vw, 0.95rem);
+  color: var(--chalk-dim);
+}
+
+.brand {
+  font-family: var(--label);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sodium);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  font-weight: 400;
+  line-height: 1.05;
+  margin: 0;
+  letter-spacing: -0.015em;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- layout shells ---- */
+
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--gap);
+  gap: var(--gap);
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.topbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--edge);
+  padding-bottom: 0.6rem;
+}
+
+.panel {
+  background: var(--ink-2);
+  border: 2px solid var(--edge);
+  border-radius: var(--radius);
+  padding: clamp(1rem, 2.5vw, 2rem);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--gap);
+}
+
+/* ---- the signature: a segmented shot-clock ---- */
+
+.clock {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.5rem, 1.5vw, 1rem);
+  width: 100%;
+}
+
+.clock-track {
+  flex: 1;
+  display: flex;
+  gap: 3px;
+  height: clamp(14px, 2.2vw, 26px);
+}
+
+.clock-seg {
+  flex: 1;
+  background: var(--sodium);
+  /* Segments extinguish left to right; the dimming is the whole effect. */
+  transition: background-color 120ms linear, opacity 120ms linear;
+}
+
+.clock-seg[data-spent="true"] {
+  background: var(--ink-3);
+}
+
+.clock.is-urgent .clock-seg:not([data-spent="true"]) {
+  background: var(--sodium-hot);
+}
+
+.clock-digits {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  min-width: 3ch;
+  text-align: right;
+  color: var(--sodium);
+}
+
+.clock.is-urgent .clock-digits {
+  color: var(--sodium-hot);
+}
+
+/* ---- answer tiles ---- */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: clamp(0.5rem, 1.5vw, 1rem);
+  width: 100%;
+}
+
+.tiles[data-count="2"] {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.tiles[data-count="3"],
+.tiles[data-count="5"],
+.tiles[data-count="6"] {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+}
+
+.tile {
+  --tile: var(--tile-a);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: left;
+  width: 100%;
+  min-height: clamp(4rem, 11vh, 7rem);
+  padding: clamp(0.75rem, 1.5vw, 1.25rem);
+  background: var(--tile);
+  color: #10121f;
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  border-bottom-width: 5px;
+  border-radius: var(--radius);
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: clamp(1rem, 1.8vw, 1.6rem);
+  line-height: 1.15;
+  transition: transform 90ms ease, filter 120ms ease;
+}
+
+.tile:nth-child(1) { --tile: var(--tile-a); }
+.tile:nth-child(2) { --tile: var(--tile-b); }
+.tile:nth-child(3) { --tile: var(--tile-c); }
+.tile:nth-child(4) { --tile: var(--tile-d); }
+.tile:nth-child(5) { --tile: var(--tile-e); }
+.tile:nth-child(6) { --tile: var(--tile-f); }
+
+/* The glyph is load-bearing: it lets a colourblind player name their answer. */
+.tile-glyph {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: clamp(1.75rem, 3vw, 2.75rem);
+  height: clamp(1.75rem, 3vw, 2.75rem);
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 3px;
+  font-size: clamp(1rem, 1.8vw, 1.5rem);
+  line-height: 1;
+}
+
+button.tile:hover {
+  filter: brightness(1.08);
+}
+
+button.tile:active {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+}
+
+.tile[data-state="dim"] {
+  filter: grayscale(0.8) brightness(0.45);
+}
+
+.tile[data-state="correct"] {
+  box-shadow: 0 0 0 4px var(--chalk), 0 0 0 9px var(--correct);
+}
+
+.tile[data-chosen="true"]::after {
+  content: "your answer";
+  margin-left: auto;
+  font-family: var(--label);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.7em;
+  background: #10121f;
+  color: var(--chalk);
+  padding: 0.2em 0.5em;
+  border-radius: 2px;
+}
+
+.tile-count {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 0.9em;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.15em 0.45em;
+  border-radius: 2px;
+}
+
+/* ---- passcode, set like a mechanical board ---- */
+
+.passcode {
+  display: flex;
+  gap: clamp(0.25rem, 1vw, 0.6rem);
+  justify-content: center;
+}
+
+.passcode span {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: clamp(2.5rem, 11vw, 8rem);
+  line-height: 1;
+  padding: 0.1em 0.14em;
+  background: var(--ink-3);
+  border: 2px solid var(--edge);
+  /* The seam across the middle is the split-flap tell. */
+  background-image: linear-gradient(to bottom, transparent 49%, rgba(0, 0, 0, 0.45) 49%, rgba(0, 0, 0, 0.45) 51%, transparent 51%);
+  border-radius: 3px;
+  color: var(--sodium);
+}
+
+/* ---- roster ---- */
+
+.roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.badge {
+  font-family: var(--label);
+  font-weight: 700;
+  font-size: clamp(1rem, 1.8vw, 1.5rem);
+  letter-spacing: 0.04em;
+  padding: 0.3em 0.7em;
+  background: var(--ink-3);
+  border: 2px solid var(--edge);
+  border-radius: 3px;
+  animation: pop 260ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.badge[data-offline="true"] {
+  opacity: 0.45;
+}
+
+@keyframes pop {
+  from { transform: scale(0.7) translateY(6px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* ---- leaderboard ---- */
+
+.board {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.board td,
+.board th {
+  padding: 0.5em 0.6em;
+  border-bottom: 1px solid var(--edge);
+  text-align: left;
+}
+
+.board th {
+  font-family: var(--label);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  color: var(--chalk-dim);
+}
+
+.board .rank {
+  font-family: var(--mono);
+  color: var(--sodium);
+  width: 3ch;
+}
+
+.board .score {
+  font-family: var(--mono);
+  font-weight: 700;
+  text-align: right;
+}
+
+/* ---- podium ---- */
+
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: end;
+  gap: clamp(0.5rem, 2vw, 1.5rem);
+  width: min(100%, 60rem);
+}
+
+.plinth {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 0.5rem;
+  background: var(--ink-2);
+  border: 2px solid var(--edge);
+  border-bottom: 6px solid var(--sodium);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.plinth[data-place="1"] { min-height: 16rem; border-bottom-color: var(--sodium); order: 2; }
+.plinth[data-place="2"] { min-height: 12rem; border-bottom-color: var(--chalk-dim); order: 1; }
+.plinth[data-place="3"] { min-height: 9rem; border-bottom-color: var(--tile-a); order: 3; }
+
+.plinth .place {
+  font-family: var(--mono);
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  color: var(--sodium);
+}
+
+.plinth .who {
+  font-family: var(--display);
+  font-size: clamp(1rem, 2.4vw, 2rem);
+  overflow-wrap: anywhere;
+}
+
+.plinth .score {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--chalk-dim);
+}
+
+/* ---- controls ---- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7em 1.4em;
+  background: var(--sodium);
+  color: #10121f;
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  border-bottom-width: 5px;
+  border-radius: var(--radius);
+  font-family: var(--label);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: clamp(1rem, 1.6vw, 1.4rem);
+  text-decoration: none;
+}
+
+.btn:active {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+}
+
+.btn[data-variant="quiet"] {
+  background: transparent;
+  color: var(--chalk);
+  border-color: var(--edge);
+}
+
+.btn[data-variant="danger"] {
+  background: var(--wrong);
+  color: var(--chalk);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+input,
+textarea,
+select {
+  font-family: var(--body);
+  font-size: 1rem;
+  width: 100%;
+  padding: 0.65em 0.75em;
+  background: var(--ink);
+  color: var(--chalk);
+  border: 2px solid var(--edge);
+  border-radius: var(--radius);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6b7399;
+}
+
+input.code-input {
+  font-family: var(--mono);
+  font-size: clamp(2rem, 9vw, 3.5rem);
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.2em;
+  color: var(--sodium);
+}
+
+label {
+  display: block;
+  font-family: var(--label);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  color: var(--chalk-dim);
+  margin-bottom: 0.35rem;
+}
+
+.field {
+  margin-bottom: 1rem;
+}
+
+.row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.note {
+  color: var(--chalk-dim);
+  font-size: 0.95rem;
+}
+
+.alert {
+  padding: 0.75em 1em;
+  border-radius: var(--radius);
+  border: 2px solid var(--wrong);
+  background: rgba(200, 50, 75, 0.15);
+  color: var(--chalk);
+}
+
+.alert[data-kind="ok"] {
+  border-color: var(--correct);
+  background: rgba(95, 168, 50, 0.15);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.spread {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* ---- host question screen ---- */
+
+.question {
+  font-family: var(--display);
+  font-size: clamp(1.6rem, 5.5vw, 5rem);
+  line-height: 1.04;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.tally {
+  font-family: var(--label);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: clamp(0.9rem, 1.6vw, 1.3rem);
+  color: var(--chalk-dim);
+}
+
+.tally strong {
+  font-family: var(--mono);
+  color: var(--sodium);
+}
+
+/* ---- player screen ---- */
+
+.player-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding: 0;
+  gap: 0;
+}
+
+.identity {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  background: var(--ink-2);
+  border-bottom: 2px solid var(--edge);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.identity .who {
+  font-family: var(--label);
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: 0.06em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identity .score {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--sodium);
+}
+
+.player-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.player-body .tiles {
+  margin-top: auto;
+}
+
+.verdict {
+  font-family: var(--display);
+  font-size: clamp(2rem, 11vw, 4rem);
+  text-align: center;
+  line-height: 1;
+}
+
+.verdict[data-kind="correct"] { color: var(--correct); }
+.verdict[data-kind="wrong"] { color: var(--wrong); }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

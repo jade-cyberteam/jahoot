@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Results · jahoot</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="shell">
+  <div class="topbar">
+    <span class="brand">jahoot</span>
+    <span class="eyebrow" id="title"></span>
+    <span class="eyebrow mono" id="when"></span>
+  </div>
+
+  <div class="stack" id="content" hidden>
+    <div class="podium" id="podium" style="margin:0 auto"></div>
+
+    <div class="panel">
+      <p class="eyebrow" style="margin:0 0 0.75rem">Final standings</p>
+      <table class="board">
+        <thead><tr><th class="rank">#</th><th>Player</th><th class="score">Score</th></tr></thead>
+        <tbody id="standings"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <p class="eyebrow" style="margin:0 0 0.75rem">How each question went</p>
+      <table class="board">
+        <thead><tr><th>Question</th><th class="score">Right</th><th class="score">Wrong</th></tr></thead>
+        <tbody id="questions"></tbody>
+      </table>
+    </div>
+
+    <p class="note">Scoreboards are kept for 30 days after the game ends.</p>
+  </div>
+
+  <p class="alert" id="error" role="alert" hidden></p>
+</main>
+
+<script type="module">
+import { $, api, show, text } from "/app/common.js";
+
+const gameId = location.pathname.split("/")[2] || "";
+
+try {
+  const result = await api(`/api/results/${gameId}`);
+  text($("#title"), result.title);
+  text($("#when"), new Date(result.finishedAt).toLocaleString());
+
+  const podium = $("#podium");
+  result.standings.slice(0, 3).forEach((row, i) => {
+    const plinth = document.createElement("div");
+    plinth.className = "plinth";
+    plinth.dataset.place = i + 1;
+    plinth.innerHTML =
+      `<span class="place mono">${i + 1}</span>` +
+      `<span class="who"></span>` +
+      `<span class="score mono">${row.score.toLocaleString()}</span>`;
+    plinth.querySelector(".who").textContent = row.name;
+    podium.append(plinth);
+  });
+
+  const standings = $("#standings");
+  for (const row of result.standings) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="rank mono">${row.rank}</td><td></td><td class="score mono">${row.score.toLocaleString()}</td>`;
+    tr.children[1].textContent = row.name;
+    standings.append(tr);
+  }
+
+  const questions = $("#questions");
+  for (const q of result.perQuestion) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td></td><td class="score mono">${q.correct}</td><td class="score mono">${q.wrong}</td>`;
+    tr.children[0].textContent = q.text;
+    questions.append(tr);
+  }
+
+  show($("#content"), true);
+} catch (e) {
+  $("#error").textContent = e.message;
+  show($("#error"), true);
+}
+</script>
+</body>
+</html>

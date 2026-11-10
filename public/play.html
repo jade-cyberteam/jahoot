@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Play · jahoot</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="player-shell">
+  <div class="identity">
+    <span class="who" id="who">jahoot</span>
+    <span class="score mono" id="score"></span>
+  </div>
+
+  <div class="player-body">
+    <!-- name entry -->
+    <section class="stack" id="nameStep" hidden>
+      <p class="eyebrow">Game <span class="mono" id="codeLabel"></span></p>
+      <h1 style="font-size:clamp(1.5rem,7vw,2.5rem)" id="quizTitle"></h1>
+      <form class="stack" id="nameForm" novalidate>
+        <div class="field">
+          <label for="name">Your nickname</label>
+          <input id="name" name="name" maxlength="20" autocomplete="off" required placeholder="Ana">
+        </div>
+        <button class="btn" type="submit">Join</button>
+      </form>
+    </section>
+
+    <!-- waiting in lobby -->
+    <section class="center" id="waitStep" hidden>
+      <p class="eyebrow">You're in</p>
+      <h1 style="font-size:clamp(1.75rem,9vw,3rem)" id="waitName"></h1>
+      <p class="note"><span class="mono" id="waitCount">1</span> in the room. Watch the big screen.</p>
+    </section>
+
+    <!-- answering -->
+    <section class="stack" id="askStep" hidden style="flex:1">
+      <p class="eyebrow"><span id="qProgress"></span></p>
+      <p id="qText" style="font-weight:700;font-size:clamp(1.1rem,4.5vw,1.5rem);margin:0"></p>
+      <div class="clock" id="clock">
+        <div class="clock-track"></div>
+        <div class="clock-digits mono">0</div>
+      </div>
+      <div class="tiles" id="tiles"></div>
+    </section>
+
+    <!-- locked in / verdict -->
+    <section class="center" id="verdictStep" hidden>
+      <p class="verdict" id="verdict"></p>
+      <p class="note" id="verdictDetail"></p>
+      <p class="mono" id="verdictScore" style="font-size:1.5rem;color:var(--sodium)"></p>
+    </section>
+
+    <!-- finished -->
+    <section class="center" id="doneStep" hidden>
+      <p class="eyebrow">Final</p>
+      <p class="verdict" id="finalPlace"></p>
+      <p class="mono" id="finalScore" style="font-size:1.5rem;color:var(--sodium)"></p>
+      <p class="note">Thanks for playing.</p>
+    </section>
+
+    <p class="alert" id="error" role="alert" hidden></p>
+  </div>
+</main>
+
+<script type="module">
+import { $, GLYPHS, connect, createClock, show, text } from "/app/common.js";
+
+const code = new URLSearchParams(location.search).get("code") || "";
+if (!/^[0-9]{6}$/.test(code)) location.replace("/");
+
+const clock = createClock($("#clock"));
+const storeKey = `jahoot:player:${code}`;
+let socket = null;
+let playerId = null;
+let answeredIndex = -1;
+let clockIndex = -1;
+
+const steps = {
+  nameStep: $("#nameStep"),
+  waitStep: $("#waitStep"),
+  askStep: $("#askStep"),
+  verdictStep: $("#verdictStep"),
+  doneStep: $("#doneStep"),
+};
+
+function showOnly(name) {
+  for (const [key, el] of Object.entries(steps)) show(el, key === name);
+}
+
+function fail(message) {
+  $("#error").textContent = message;
+  show($("#error"), true);
+}
+
+text($("#codeLabel"), code);
+showOnly("nameStep");
+
+socket = connect(`/ws/play/${code}`, {
+  onState: render,
+  onMessage: (msg) => {
+    if (msg.type === "joined") {
+      playerId = msg.playerId;
+      sessionStorage.setItem(storeKey, JSON.stringify({ token: msg.playerToken }));
+      show($("#error"), false);
+    }
+    if (msg.type === "error") fail(msg.message);
+  },
+});
+
+// A refresh mid-game comes back with the stored token and keeps its score.
+// sessionStorage, not localStorage: identity belongs to this tab, so two tabs
+// on one machine are two players rather than one fighting over a nickname.
+let stored = null;
+try {
+  stored = JSON.parse(sessionStorage.getItem(storeKey) || "null");
+} catch { /* corrupt entry; the player just types their name again */ }
+if (stored?.token) socket.send({ action: "join", name: "", playerToken: stored.token });
+
+$("#nameForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const name = $("#name").value.trim();
+  if (!name) return;
+  socket.send({ action: "join", name });
+});
+
+function render(state) {
+  if (state.phase === "gone") return fail("This game has ended.");
+  text($("#quizTitle"), state.title);
+
+  if (!state.me) {
+    showOnly("nameStep");
+    text($("#score"), "");
+    text($("#who"), "jahoot");
+    return;
+  }
+
+  text($("#who"), state.me.name);
+  text($("#score"), state.me.score.toLocaleString());
+
+  if (state.phase === "lobby") {
+    showOnly("waitStep");
+    text($("#waitName"), state.me.name);
+    text($("#waitCount"), state.playerCount);
+    return;
+  }
+
+  if (state.phase === "final") {
+    showOnly("doneStep");
+    clock.stop();
+    text($("#finalPlace"), `#${state.me.rank}`);
+    text($("#finalScore"), `${state.me.score.toLocaleString()} points`);
+    return;
+  }
+
+  if (state.phase === "question") {
+    // Already locked in: show the holding screen, not the tiles.
+    if (state.myAnswer) {
+      showOnly("verdictStep");
+      clock.stop();
+      $("#verdict").dataset.kind = "";
+      text($("#verdict"), "Locked in");
+      text($("#verdictDetail"), `${state.answeredCount} of ${state.playerCount} answered`);
+      text($("#verdictScore"), "");
+      return;
+    }
+    showOnly("askStep");
+    renderQuestion(state);
+    return;
+  }
+
+  if (state.phase === "reveal" || state.phase === "scoreboard") {
+    showOnly("verdictStep");
+    clock.stop();
+    const mine = state.myAnswer;
+    const verdict = $("#verdict");
+    if (!mine) {
+      verdict.dataset.kind = "wrong";
+      text(verdict, "No answer");
+      text($("#verdictDetail"), "You ran out of time.");
+      text($("#verdictScore"), "");
+    } else if (mine.correct) {
+      verdict.dataset.kind = "correct";
+      text(verdict, "Correct");
+      text(
+        $("#verdictDetail"),
+        state.me.streak > 1 ? `${state.me.streak} in a row` : `#${state.me.rank} of ${state.playerCount}`,
+      );
+      text($("#verdictScore"), `+${(mine.points ?? 0).toLocaleString()}`);
+    } else {
+      verdict.dataset.kind = "wrong";
+      text(verdict, "Wrong");
+      const right = state.question?.answers.findIndex((a) => a.correct) ?? -1;
+      text(
+        $("#verdictDetail"),
+        right >= 0 ? `The answer was ${GLYPHS[right]} ${state.question.answers[right].text}` : "",
+      );
+      text($("#verdictScore"), "");
+    }
+  }
+}
+
+function renderQuestion(state) {
+  const q = state.question;
+  if (!q) return;
+  text($("#qProgress"), `Question ${state.questionIndex + 1} of ${state.questionCount}`);
+  text($("#qText"), q.text);
+
+  if (state.questionIndex !== clockIndex) {
+    clock.start(q.endsAt, q.timeLimit);
+    clockIndex = state.questionIndex;
+  }
+
+  const tiles = $("#tiles");
+  // Only rebuild on a new question, so a tap isn't lost to a re-render.
+  if (tiles.dataset.index === String(state.questionIndex)) return;
+  tiles.dataset.index = String(state.questionIndex);
+  tiles.dataset.count = q.answers.length;
+  tiles.innerHTML = "";
+
+  q.answers.forEach((answer, i) => {
+    const tile = document.createElement("button");
+    tile.className = "tile";
+    tile.type = "button";
+
+    const glyph = document.createElement("span");
+    glyph.className = "tile-glyph";
+    glyph.textContent = GLYPHS[i] ?? "●";
+    tile.append(glyph);
+
+    const label = document.createElement("span");
+    label.textContent = answer.text;
+    tile.append(label);
+
+    tile.addEventListener("click", () => {
+      if (answeredIndex === state.questionIndex) return;
+      answeredIndex = state.questionIndex;
+      for (const other of tiles.children) other.disabled = true;
+      tile.dataset.chosen = "true";
+      socket.send({
+        action: "answer",
+        questionIndex: state.questionIndex,
+        answerIndex: i,
+      });
+    });
+
+    tiles.append(tile);
+  });
+}
+</script>
+</body>
+</html>
