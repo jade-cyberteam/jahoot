@@ -36,12 +36,14 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Game"] }],
 
   "vars": {
-    // Cloudflare Access application in front of https://quiz.jett.io/admin.
-    // ACCESS_AUD is the application's Audience tag; ACCESS_TEAM_DOMAIN is
-    // https://<team>.cloudflareaccess.com. Both empty = admin UI is open, which
-    // the Worker refuses to serve unless ALLOW_INSECURE_ADMIN is "1" (local dev).
-    "ACCESS_AUD": "",
-    "ACCESS_TEAM_DOMAIN": "",
+    // Cloudflare Access self-hosted app "quiz", scoped to quiz.jett.io/admin,
+    // policy "jahoot owner only" (Allow, Emails is jt.wmt.nz@gmail.com). Scoping
+    // to the admin path is load-bearing: covering the whole hostname would make
+    // players log in to play and would break the token API.
+    // If either var is blank the Worker refuses to serve the builder at all,
+    // unless ALLOW_INSECURE_ADMIN is "1" (local dev only).
+    "ACCESS_AUD": "e9e32889716993c4fa4707319d8bc0e889d126ea3ab3be37297d56ed077a3c45",
+    "ACCESS_TEAM_DOMAIN": "https://super-thunder-8607.cloudflareaccess.com",
     "ALLOW_INSECURE_ADMIN": "0"
   },
 
